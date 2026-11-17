@@ -574,7 +574,7 @@
   </div>
 
 <script>
-  const scriptURL = 'https://script.google.com/macros/s/AKfycbzDo1pXs08pj-vpy8JqPjX2ZMFNKo8JjEvNEIFX3tyi0UxmcXjUAxMXdRK-DnvhCnmR/exec';
+  const scriptURL = 'https://script.google.com/macros/s/AKfycbygAYiZ8CFkM-f4JH6skT_HMvD3LL6O_ol5jPrKAZzEWmdVHMPoR_4Onk5iae73uf4/exec';
   let students = [];
   let filteredStudents = [];
 
@@ -864,60 +864,57 @@ async function loadStudents(date) {
     renderStudents();
   }
 
-  function resetForm() {
-    document.getElementById('search').value = '';
-    students.forEach(s => s.status = '');
-    filteredStudents = [...students];
-    renderStudents();
+ function resetForm() {
+  document.getElementById('search').value = '';
+  loadStudents(document.getElementById('dateInput').value);
+}
+
+ async function submitForm() {
+  const date = document.getElementById('dateInput').value;
+  const month = getMonthFromDate(date);
+  const day = getDayFromDate(date);
+
+  if (!students.length) {
+    showToast('មិនមានឈ្មោះសិស្ស!', 'warn');
+    return;
   }
 
-  async function submitForm() {
-    const date = document.getElementById('dateInput').value;
-    const month = getMonthFromDate(date);
-    const day = getDayFromDate(date);
+  const data = students.map(s => ({ name: s.name, status: s.status || '' }));
 
-    const data = filteredStudents.map(s => ({ name: s.name, status: s.status }));
-    const count = data.filter(d => d.status).length;
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.innerHTML = '<i class="fa-solid fa-hourglass"></i> កំពុងស្នើ...';
+  submitBtn.disabled = true;
+  document.getElementById('resetBtn').disabled = true;
+  document.getElementById('dateInput').disabled = true;
+  document.getElementById('search').disabled = true;
+  document.getElementById('appOverlay').classList.add('show');
 
-    if (count === 0) {
-      showToast('មិនមានសិស្សអវត្តមានទេ!', 'warn');
-      return;
-    }
+  try {
+    await fetch(scriptURL, {
+      method: 'POST',
+      body: JSON.stringify({ month, day, attendance: data }),
+    });
 
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.innerHTML = '<i class="fa-solid fa-hourglass"></i> កំពុងស្នើ...';
-    submitBtn.disabled = true;
-    document.getElementById('resetBtn').disabled = true;
-    document.getElementById('dateInput').disabled = true;
-    document.getElementById('search').disabled = true;
-    document.getElementById('appOverlay').classList.add('show');
+    submitBtn.classList.add('success');
+    submitBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> បានស្នើ';
+    await loadStudents(date);   // reload what is actually saved in the sheet
 
-    try {
-      await fetch(scriptURL, {
-        method: 'POST',
-        body: JSON.stringify({ month, day, attendance: data }),
-      });
-
-      submitBtn.classList.add('success');
-      submitBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> បានស្នើ';
-      // resetForm();
-
-      setTimeout(() => {
-        submitBtn.classList.remove('success');
-        submitBtn.innerHTML = '<i class="fa-regular fa-paper-plane"></i> ដាក់ស្នើ';
-        submitBtn.disabled = false;
-      }, 1800);
-    } catch (e) {
-      showToast('បញ្ជូនមិនបាន', 'error');
+    setTimeout(() => {
+      submitBtn.classList.remove('success');
       submitBtn.innerHTML = '<i class="fa-regular fa-paper-plane"></i> ដាក់ស្នើ';
       submitBtn.disabled = false;
-    } finally {
-      document.getElementById('resetBtn').disabled = false;
-      document.getElementById('dateInput').disabled = false;
-      document.getElementById('search').disabled = false;
-      document.getElementById('appOverlay').classList.remove('show');
-    }
+    }, 1800);
+  } catch (e) {
+    showToast('បញ្ជូនមិនបាន', 'error');
+    submitBtn.innerHTML = '<i class="fa-regular fa-paper-plane"></i> ដាក់ស្នើ';
+    submitBtn.disabled = false;
+  } finally {
+    document.getElementById('resetBtn').disabled = false;
+    document.getElementById('dateInput').disabled = false;
+    document.getElementById('search').disabled = false;
+    document.getElementById('appOverlay').classList.remove('show');
   }
+}
 
   window.onload = () => {
     initDropdowns();
